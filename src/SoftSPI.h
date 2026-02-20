@@ -28,17 +28,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifndef _SOFTSPI_H
 #define _SOFTSPI_H
 
-#if (ARDUINO >= 100) 
-# include <Arduino.h>
-#else
-# include <WProgram.h>
-#endif
+#include <Arduino.h>
 
 #include <SPI.h>
+#include <pico/mutex.h>
 
 class SoftSPI : public SPIClass {
     private:
@@ -52,16 +48,19 @@ class SoftSPI : public SPIClass {
         uint8_t _mosi;
         uint8_t _sck;
         uint8_t _order;
+        recursive_mutex_t *_mut;
 
     public:
-        SoftSPI(uint8_t mosi, uint8_t miso, uint8_t sck);
+        SoftSPI(uint8_t mosi, uint8_t miso, uint8_t sck, recursive_mutex_t *mut);
         void begin();
         void end();
         void setBitOrder(uint8_t);
         void setDataMode(uint8_t);
         void setClockDivider(uint32_t);
         uint8_t transfer(uint8_t);
-		uint16_t transfer16(uint16_t data);
-		
+        uint16_t transfer16(uint16_t data);
+
+        void beginTransaction(SPISettings settings) override;
+        void endTransaction() override;
 };
 #endif

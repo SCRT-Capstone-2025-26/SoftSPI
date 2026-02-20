@@ -31,7 +31,7 @@
 
 #include <SoftSPI.h>
 
-SoftSPI::SoftSPI(uint8_t mosi, uint8_t miso, uint8_t sck) {
+SoftSPI::SoftSPI(uint8_t mosi, uint8_t miso, uint8_t sck, recursive_mutex_t *mut) {
     _mosi = mosi;
     _miso = miso;
     _sck = sck;
@@ -39,6 +39,7 @@ SoftSPI::SoftSPI(uint8_t mosi, uint8_t miso, uint8_t sck) {
     _cke = 0;
     _ckp = 0;
     _order = MSBFIRST;
+    _mut = mut;
 }
 
 void SoftSPI::begin() {
@@ -80,33 +81,11 @@ void SoftSPI::setDataMode(uint8_t mode) {
     digitalWrite(_sck, _ckp ? HIGH : LOW);
 }
 
+// Before it used SPI_CLOCK_DIV2 etc
+// This is actually board dependent and those constants are actually the correct
+//  values for _delay anyway so this replaced code is equivalent
 void SoftSPI::setClockDivider(uint32_t div) {
-    switch (div) {
-        case SPI_CLOCK_DIV2:
-            _delay = 2;
-            break;
-        case SPI_CLOCK_DIV4:
-            _delay = 4;
-            break;
-        case SPI_CLOCK_DIV8:
-            _delay = 8;
-            break;
-        case SPI_CLOCK_DIV16:
-            _delay = 16;
-            break;
-        case SPI_CLOCK_DIV32:
-            _delay = 32;
-            break;
-        case SPI_CLOCK_DIV64:
-            _delay = 64;
-            break;
-        case SPI_CLOCK_DIV128:
-            _delay = 128;
-            break;
-        default:
-            _delay = 128;
-            break;
-    }
+    _delay = div;
 }
 
 void SoftSPI::wait(uint_fast8_t del) {
@@ -203,3 +182,16 @@ uint16_t SoftSPI::transfer16(uint16_t data)
 
 	return out.val;
 }
+
+
+void SoftSPI::beginTransaction(SPISettings settings)
+{
+  recursive_mutex_enter_blocking(_mut);
+  SPIClass::beginTransaction(settings);
+};
+
+void SoftSPI::endTransaction()
+{
+  SPIClass::endTransaction();
+  recursive_mutex_exit(_mut);
+};
